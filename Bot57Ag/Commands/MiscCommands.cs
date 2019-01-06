@@ -34,7 +34,7 @@ namespace Bot57Ag.Commands
         {
             EmbedBuilder aboutEmbed = new EmbedBuilder();
             aboutEmbed.Color = new Discord.Color(0x0047AB);
-            aboutEmbed.AddField("OS", System.Runtime.InteropServices.RuntimeInformation.OSDescription, true);
+            aboutEmbed.AddField("OS", System.Runtime.InteropServices.RuntimeInformation.OSDescription, false);
             aboutEmbed.AddField("Silver Version", $"v{Silver.Version}-{ThisAssembly.Git.Tag}", true);
             aboutEmbed.AddField("Discord.NET Version", typeof(DiscordConfig).GetTypeInfo().Assembly.GetName().Version.ToString(3), true);
             await ReplyAsync(null, false, aboutEmbed.Build());
@@ -66,7 +66,8 @@ namespace Bot57Ag.Commands
                             moduleinfo += $"{CultureInfo.CurrentCulture.TextInfo.ToTitleCase(submod.Name)}{(String.IsNullOrWhiteSpace(Alias) ? "" : $" ({CultureInfo.CurrentCulture.TextInfo.ToTitleCase(Alias.Split(' ').LastOrDefault())})")}, ";
                         }
                     }
-                    helpEmbed.AddField($"{(module.Group != null ? CultureInfo.CurrentCulture.TextInfo.ToTitleCase(module.Group) : module.Name.Replace("Commands",""))} Commands", $"{module.Summary}`{moduleinfo.Substring(0, moduleinfo.Length-2)}`");
+                    if (module.GetExecutableCommandsAsync(Context, null).Result.Count > 0)
+                        helpEmbed.AddField($"{(module.Group != null ? CultureInfo.CurrentCulture.TextInfo.ToTitleCase(module.Group) : module.Name.Replace("Commands",""))} Commands", $"{module.Summary}`{moduleinfo.Substring(0, moduleinfo.Length-2)}`");
                 }
             }
             await ReplyAsync(null, false, helpEmbed.Build());
@@ -94,7 +95,8 @@ namespace Bot57Ag.Commands
         {
             using (SQLContext sql = new SQLContext())
             {
-                sql.Guilds.Find(Context.Guild.Id.ToString()).Prefix = prefix;
+                sql.GetGuild(Context.Guild).Prefix = prefix;
+                sql.SaveChanges();
                 await ReplyAsync($"Done! From now on, use `{prefix}` to run commands in this guild.");
             }
         }

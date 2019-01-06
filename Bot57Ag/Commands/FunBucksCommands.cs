@@ -24,7 +24,7 @@ namespace Bot57Ag.Commands
                 {
                     sql.Users.Add(new SQLUser
                     {
-                        UserID = Context.User.Id.ToString(),
+                        UserId = Context.User.Id.ToString(),
                         FunBucks = 0.00m,
                         FunBucksLastPaycheck = DateTimeOffset.Now
                     });

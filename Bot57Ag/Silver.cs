@@ -35,22 +35,23 @@ namespace Bot57Ag
 
             using (SQLContext sql = new SQLContext())
             {
-                if (!(sql.Config.Count()-1 < ConfigIndex))
+                if (sql.GetConfig(ConfigIndex) == null)
                 {
                     Registration(giventoken, out string Token, out string Prefix, out string[] Admins);
-                    sql.Config.Add(new SQLConfig
+                    sql.Configs.Add(new SQLConfig
                     {
+                        Id = ConfigIndex + 1,
                         Token = Token,
                         PrefixDefault = Prefix,
-                        AdminIDs = Admins
+                        AdminIds = Admins
                     });
                     sql.SaveChanges();
-                    Console.WriteLine($"\n\nAll set, appended config #{sql.Config.Count()} to database.");
+                    Console.WriteLine($"\n\nAll set, appended config #{ConfigIndex} to database.");
                     await Task.Delay(3500);
                     Console.Clear();
                 }
 
-                await client.LoginAsync(TokenType.Bot, giventoken ?? sql.Config.ToArray()[ConfigIndex].Token);
+                await client.LoginAsync(TokenType.Bot, giventoken ?? sql.GetConfig(ConfigIndex).Token);
                 await client.StartAsync();
             }
 
@@ -62,8 +63,8 @@ namespace Bot57Ag
                         if (sql.GetGuild(guild) == null)
                             sql.Guilds.Add(new SQLGuild
                             {
-                                GuildID = guild.Id.ToString(),
-                                Prefix = sql.Config.ToArray()[ConfigIndex].PrefixDefault,
+                                GuildId = guild.Id.ToString(),
+                                Prefix = sql.GetConfig(ConfigIndex).PrefixDefault,
                                 DropFunBucks = false
                             });
                     sql.SaveChanges();

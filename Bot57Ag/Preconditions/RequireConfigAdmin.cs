@@ -14,7 +14,7 @@ namespace Bot57Ag.Preconditions
         {
             using (SQLContext sql = new SQLContext())
             {
-                if (sql.Config.ToArray()[Silver.ConfigIndex].AdminIDs.Contains(context.User.Id.ToString()))
+                if (sql.GetConfig(Silver.ConfigIndex).AdminIds.Contains(context.User.Id.ToString()))
                     return await Task.FromResult(PreconditionResult.FromSuccess());
                 else
                     return await Task.FromResult(PreconditionResult.FromError("User is not a bot admin."));

@@ -11,9 +11,14 @@ namespace Bot57Ag
 {
     public class SQLContext : DbContext
     {
-        public DbSet<SQLConfig> Config { get; set; }
+        public DbSet<SQLConfig> Configs { get; set; }
         public DbSet<SQLGuild> Guilds { get; set; }
         public DbSet<SQLUser> Users { get; set; }
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<SQLGuild>().HasKey(x => new { x.ConfigId, x.GuildId });
+        }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
@@ -27,6 +32,11 @@ namespace Bot57Ag
                 File.WriteAllText(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location) + @"\dbpass.txt", databasepass);
             }
             optionsBuilder.UseNpgsql($"Host=localhost;Database=Bot57Ag;Username=Bot57Ag;Password={databasepass}");
+        }
+
+        public SQLConfig GetConfig(int id)
+        {
+            return Configs.Find(id);
         }
 
         public SQLUser GetUser(IUser usr)
@@ -46,17 +56,17 @@ namespace Bot57Ag
 
         public SQLGuild GetGuild(IGuild guild)
         {
-            return Guilds.Find(guild.Id.ToString());
+            return Guilds.Find(new object[] { guild.Id.ToString(), Silver.ConfigIndex + 1 });
         }
 
         public SQLGuild GetGuild(ulong id)
         {
-            return Guilds.Find(id.ToString());
+            return Guilds.Find(new object[] { id.ToString(), Silver.ConfigIndex + 1 });
         }
 
         public SQLGuild GetGuild(string id)
         {
-            return Guilds.Find(id);
+            return Guilds.Find(new object[] { id, Silver.ConfigIndex + 1 });
         }
     }
 
@@ -65,15 +75,18 @@ namespace Bot57Ag
     public class SQLConfig
     {
         [Key]
+        public int Id { get; set; }
         public string Token { get; set; }
         public string PrefixDefault { get; set; }
-        public string[] AdminIDs { get; set; }
+        public string[] AdminIds { get; set; }
     }
 
     public class SQLGuild
     {
         [Key]
-        public string GuildID { get; set; }
+        public int ConfigId { get; set; }
+        [Key]
+        public string GuildId { get; set; }
         public string Prefix { get; set; }
         public bool DropFunBucks { get; set; }
     }
@@ -81,7 +94,7 @@ namespace Bot57Ag
     public class SQLUser
     {
         [Key]
-        public string UserID { get; set; }
+        public string UserId { get; set; }
         public decimal FunBucks { get; set; }
         public DateTimeOffset FunBucksLastPaycheck { get; set; }
     }

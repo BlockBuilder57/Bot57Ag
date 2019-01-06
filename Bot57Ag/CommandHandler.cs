@@ -38,11 +38,11 @@ namespace Bot57Ag
             string prefix = "☺"; //please never use this
             using (SQLContext sql = new SQLContext())
             {
-                if (!(sql.Config.Count() > 0))
-                    prefix = sql.Config.ToArray()[Silver.ConfigIndex].PrefixDefault;
+                if (sql.GetConfig(Silver.ConfigIndex) != null)
+                    prefix = sql.GetConfig(Silver.ConfigIndex).PrefixDefault;
                 if (message.Channel is SocketGuildChannel sgc)
-                    if (sql.Guilds.Find(sgc.Guild.Id.ToString()) != null && sql.Guilds.Find(sgc.Guild.Id.ToString()).Prefix != null)
-                        prefix = sql.Guilds.Find(((SocketGuildChannel)message.Channel).Guild.Id.ToString()).Prefix;
+                    if (sql.GetGuild(sgc.Guild) != null && sql.GetGuild(sgc.Guild).Prefix != null)
+                        prefix = sql.GetGuild(sgc.Guild).Prefix;
             }
 
             if (!message.HasStringPrefix(prefix, ref argPos))
