@@ -30,20 +30,19 @@ namespace Bot57Ag
 
         private async Task HandleCommandAsync(SocketMessage msg)
         {
-            SocketUserMessage message = msg as SocketUserMessage;
-            if (message == null)
+            if (!(msg is SocketUserMessage message))
                 return;
 
             int argPos = 0;
 
-            string prefix = "☺"; //please never show this
-            using (SQLContext sqlcontext = new SQLContext())
+            string prefix = "☺"; //please never use this
+            using (SQLContext sql = new SQLContext())
             {
-                if (!(sqlcontext.Config.Count() > 0))
-                    prefix = sqlcontext.Config.First().PrefixDefault;
+                if (!(sql.Config.Count() > 0))
+                    prefix = sql.Config.ToArray()[Silver.ConfigIndex].PrefixDefault;
                 if (message.Channel is SocketGuildChannel sgc)
-                    if (sqlcontext.Guilds.Find(sgc.Guild.Id.ToString()) != null && sqlcontext.Guilds.Find(sgc.Guild.Id.ToString()).Prefix != null)
-                        prefix = sqlcontext.Guilds.Find(((SocketGuildChannel)message.Channel).Guild.Id.ToString()).Prefix;
+                    if (sql.Guilds.Find(sgc.Guild.Id.ToString()) != null && sql.Guilds.Find(sgc.Guild.Id.ToString()).Prefix != null)
+                        prefix = sql.Guilds.Find(((SocketGuildChannel)message.Channel).Guild.Id.ToString()).Prefix;
             }
 
             if (!message.HasStringPrefix(prefix, ref argPos))
@@ -52,6 +51,9 @@ namespace Bot57Ag
             SocketCommandContext context = new SocketCommandContext(dsc, message);
 
             IResult result = await cmdsrv.ExecuteAsync(context, argPos, null);
+
+            if (!result.IsSuccess)
+                await new LogHandler().CustomLogger(new LogMessage(LogSeverity.Verbose, result.Error.ToString(), result.ErrorReason));
         }
     }
 }

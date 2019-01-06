@@ -7,9 +7,9 @@ using Discord.WebSocket;
 
 namespace Bot57Ag
 {
-    class LogHandler
+    public class LogHandler
     {
-        public Task LogLevel_Warnings(LogMessage LogMsg)
+        public Task CustomLogger(LogMessage LogMsg)
         {
             Console.WriteLine(LogMsg.Message);
             return Task.CompletedTask;
