@@ -35,7 +35,7 @@ namespace Bot57Ag.Commands
             EmbedBuilder aboutEmbed = new EmbedBuilder();
             aboutEmbed.Color = new Discord.Color(0x0047AB);
             aboutEmbed.AddField("OS", System.Runtime.InteropServices.RuntimeInformation.OSDescription, false);
-            aboutEmbed.AddField("Silver Version", $"v{Silver.Version}-{ThisAssembly.Git.Tag}", true);
+            aboutEmbed.AddField("Silver Version", $"v{Silver.Version}{(String.IsNullOrWhiteSpace(ThisAssembly.Git.Tag) ? "" : $"-{ThisAssembly.Git.Tag}")}", true);
             aboutEmbed.AddField("Discord.NET Version", typeof(DiscordConfig).GetTypeInfo().Assembly.GetName().Version.ToString(3), true);
             await ReplyAsync(null, false, aboutEmbed.Build());
         }

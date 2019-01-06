@@ -17,7 +17,7 @@ namespace Bot57Ag
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<SQLGuild>().HasKey(x => new { x.ConfigId, x.GuildId });
+            modelBuilder.Entity<SQLGuild>().HasKey(x => new { x.GuildId, x.ConfigId });
         }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
@@ -36,7 +36,7 @@ namespace Bot57Ag
 
         public SQLConfig GetConfig(int id)
         {
-            return Configs.Find(id);
+            return Configs.Find(id + 1);
         }
 
         public SQLUser GetUser(IUser usr)
@@ -56,17 +56,17 @@ namespace Bot57Ag
 
         public SQLGuild GetGuild(IGuild guild)
         {
-            return Guilds.Find(new object[] { guild.Id.ToString(), Silver.ConfigIndex + 1 });
+            return Guilds.Find(new object[] { guild.Id.ToString(), Silver.ConfigIndex });
         }
 
         public SQLGuild GetGuild(ulong id)
         {
-            return Guilds.Find(new object[] { id.ToString(), Silver.ConfigIndex + 1 });
+            return Guilds.Find(new object[] { id.ToString(), Silver.ConfigIndex });
         }
 
         public SQLGuild GetGuild(string id)
         {
-            return Guilds.Find(new object[] { id, Silver.ConfigIndex + 1 });
+            return Guilds.Find(new object[] { id, Silver.ConfigIndex });
         }
     }
 
@@ -84,9 +84,9 @@ namespace Bot57Ag
     public class SQLGuild
     {
         [Key]
-        public int ConfigId { get; set; }
-        [Key]
         public string GuildId { get; set; }
+        [Key]
+        public int ConfigId { get; set; }
         public string Prefix { get; set; }
         public bool DropFunBucks { get; set; }
     }
