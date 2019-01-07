@@ -34,9 +34,20 @@ namespace Bot57Ag
             optionsBuilder.UseNpgsql($"Host=localhost;Database=Bot57Ag;Username=Bot57Ag;Password={databasepass}");
         }
 
+        public override int SaveChanges()
+        {
+            if (Silver.ConfigIndex == -1)
+                return 0;
+            else
+                return base.SaveChanges();
+        }
+
         public SQLConfig GetConfig(int id)
         {
-            return Configs.Find(id + 1);
+            SQLConfig temp = Silver.ConfigIndex == -1 ? Silver.NoConfigSQLConfig : Configs.Find(id + 1);
+            if (Silver.TokensLocked())
+                temp.Token = null;
+            return temp;
         }
 
         public SQLUser GetUser(IUser usr)

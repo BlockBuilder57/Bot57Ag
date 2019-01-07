@@ -95,9 +95,17 @@ namespace Bot57Ag.Commands
         {
             using (SQLContext sql = new SQLContext())
             {
-                sql.GetGuild(Context.Guild).Prefix = prefix;
-                sql.SaveChanges();
-                await ReplyAsync($"Done! From now on, use `{prefix}` to run commands in this guild.");
+                if (sql.GetGuild(Context.Guild) != null)
+                {
+                    sql.GetGuild(Context.Guild).Prefix = prefix;
+                    sql.SaveChanges();
+                    await ReplyAsync($"Done! From now on, use `{prefix}` to run commands in this guild.");
+                }
+                else
+                {
+                    Silver.NoConfigSQLConfig.PrefixDefault = prefix;
+                    await ReplyAsync($"Done! From now on, use `{prefix}` to run commands.");
+                }
             }
         }
     }

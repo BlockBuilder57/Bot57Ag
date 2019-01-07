@@ -17,14 +17,28 @@ namespace Bot57Ag
         static void Main(string[] args)
         {
             Console.Title = $"Bot57Ag (Silver v{Version})";
+            string ArgsToken = null;
+            bool FromToken = false;
 
-            if (args.Length > 0 && !int.TryParse(args[0], out ConfigIndex))
-                new Silver().LoginTask(args[0]).GetAwaiter().GetResult();
-            else
-                new Silver().LoginTask().GetAwaiter().GetResult();
+            for (int i = 0; i < args.Length-1; i++)
+            {
+                if (args[i].ToLower().Contains("configindex"))
+                {
+                    i++;
+                    ConfigIndex = int.Parse(args[i]);
+                }
+                if (args[i].ToLower().Contains("token"))
+                {
+                    i++;
+                    ConfigIndex = -1;
+                    FromToken = true;
+                    ArgsToken = args[i];
+                }
+            }
+            new Silver().LoginTask(ArgsToken, FromToken).GetAwaiter().GetResult();
         }
 
-        public async Task LoginTask(string giventoken = null)
+        public async Task LoginTask(string token = null, bool fromtoken = false)
         {
             client = new DiscordSocketClient(new DiscordSocketConfig
             {
@@ -35,23 +49,34 @@ namespace Bot57Ag
 
             using (SQLContext sql = new SQLContext())
             {
-                if (sql.GetConfig(ConfigIndex) == null)
+                if (sql.GetConfig(ConfigIndex) == null || fromtoken == true)
                 {
-                    Registration(giventoken, out string Token, out string Prefix, out string[] Admins);
-                    sql.Configs.Add(new SQLConfig
+                    Registration(token, out token, out string Prefix, out string[] Admins);
+                    if (ConfigIndex == -1)
                     {
-                        Id = ConfigIndex + 1,
-                        Token = Token,
-                        PrefixDefault = Prefix,
-                        AdminIds = Admins
-                    });
-                    sql.SaveChanges();
-                    Console.WriteLine($"\n\nAll set, appended config #{ConfigIndex} to database.");
-                    await Task.Delay(3500);
-                    Console.Clear();
+                        NoConfigSetup(token, Prefix, Admins);
+                        Console.WriteLine($"\n\nAll set. As you gave a token as an argument, the config will not be saved.");
+                        await Task.Delay(3500);
+                        Console.Clear();
+                    }
+                    else
+                    {
+                        sql.Configs.Add(new SQLConfig
+                        {
+                            Id = ConfigIndex + 1,
+                            Token = token,
+                            PrefixDefault = Prefix,
+                            AdminIds = Admins
+                        });
+                        sql.SaveChanges();
+                        Console.WriteLine($"\n\nAll set, appended config #{ConfigIndex} to database.");
+                        await Task.Delay(3500);
+                        Console.Clear();
+                    }
                 }
 
-                await client.LoginAsync(TokenType.Bot, giventoken ?? sql.GetConfig(ConfigIndex).Token);
+                await client.LoginAsync(TokenType.Bot, sql.GetConfig(ConfigIndex).Token);
+                LockTokens();
                 await client.StartAsync();
             }
 
@@ -59,15 +84,18 @@ namespace Bot57Ag
             {
                 using (SQLContext sql = new SQLContext())
                 {
-                    foreach (SocketGuild guild in client.Guilds)
-                        if (sql.GetGuild(guild) == null)
-                            sql.Guilds.Add(new SQLGuild
-                            {
-                                GuildId = guild.Id.ToString(),
-                                Prefix = sql.GetConfig(ConfigIndex).PrefixDefault,
-                                DropFunBucks = false
-                            });
-                    sql.SaveChanges();
+                    if (ConfigIndex != -1)
+                    {
+                        foreach (SocketGuild guild in client.Guilds)
+                            if (sql.GetGuild(guild) == null)
+                                sql.Guilds.Add(new SQLGuild
+                                {
+                                    GuildId = guild.Id.ToString(),
+                                    Prefix = sql.GetConfig(ConfigIndex).PrefixDefault,
+                                    DropFunBucks = false
+                                });
+                        sql.SaveChanges();
+                    }
                 }
                 UpdateWindowTitle(client);
                 return Task.CompletedTask;
@@ -80,14 +108,16 @@ namespace Bot57Ag
         
         public void UpdateWindowTitle(DiscordSocketClient client)
         {
-            Console.Title = $"Bot57Ag (Silver v{Version}) - {client.CurrentUser.Username}#{client.CurrentUser.Discriminator} on {client.Guilds.Count} guild(s)";
+            using (SQLContext sql = new SQLContext())
+                if (sql.GetConfig(ConfigIndex) != null)
+                    Console.Title = $"Bot57Ag (Silver v{ThisAssembly.Git.Tag}) - {client.CurrentUser.Username}#{client.CurrentUser.Discriminator} on {client.Guilds.Count} guild(s) (Config #{ConfigIndex}, Prefix {sql.GetConfig(ConfigIndex).PrefixDefault})";
         }
 
         private void Registration(string TokenIn, out string TokenOut, out string PrefixOut, out string[] AdminsOut)
         {
             if (TokenIn == null)
             {
-                Console.WriteLine("No token exists. Please enter one below, and it will be saved to the database.");
+                Console.WriteLine("No token exists. Please enter one below to use. If it is incorrect, the bot will not work.");
                 TokenOut = Console.ReadLine();
             }
             else
@@ -108,6 +138,36 @@ namespace Bot57Ag
                 return;
             else
                 Registration(TokenOut, out TokenOut, out PrefixOut, out AdminsOut);
+        }
+
+        private static bool _LockTokens;
+
+        public static bool TokensLocked()
+        {
+            return _LockTokens;
+        }
+
+        public void LockTokens()
+        {
+            _LockTokens = true;
+        }
+
+        public static SQLConfig NoConfigSQLConfig;
+        private bool NoConfigSetup_Ran = false;
+
+        public void NoConfigSetup(string token, string prefix, string[] ids)
+        {
+            if (!NoConfigSetup_Ran)
+            {
+                NoConfigSQLConfig = new SQLConfig
+                {
+                    Id = -1,
+                    Token = token,
+                    PrefixDefault = prefix,
+                    AdminIds = ids
+                };
+                NoConfigSetup_Ran = true;
+            }
         }
     }
 }
