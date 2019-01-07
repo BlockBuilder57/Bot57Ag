@@ -11,6 +11,7 @@ namespace Bot57Ag
     class Silver
     {
         private static DiscordSocketClient client;
+        public static SQLContext SQL = new SQLContext();
         public static Version Version = new Version(0, 1);
         public static int ConfigIndex = 0;
 
@@ -35,7 +36,14 @@ namespace Bot57Ag
                     ArgsToken = args[i];
                 }
             }
-            new Silver().LoginTask(ArgsToken, FromToken).GetAwaiter().GetResult();
+            try
+            {
+                new Silver().LoginTask(ArgsToken, FromToken).GetAwaiter().GetResult();
+            }
+            catch (System.Net.Sockets.SocketException exceop)
+            {
+                Console.WriteLine(exceop);
+            }
         }
 
         public async Task LoginTask(string token = null, bool fromtoken = false)
@@ -47,55 +55,62 @@ namespace Bot57Ag
 
             client.Log += new LogHandler().CustomLogger;
 
-            using (SQLContext sql = new SQLContext())
+            if (SQL.GetConfig(ConfigIndex) == null || fromtoken == true)
             {
-                if (sql.GetConfig(ConfigIndex) == null || fromtoken == true)
+                if (!SQL.HasConnected)
                 {
-                    Registration(token, out token, out string Prefix, out string[] Admins);
-                    if (ConfigIndex == -1)
+                    Console.WriteLine($"Error: A connection could not be made to the database.\nDo you want to run without a database? (No data can be retrieved or saved!) [y/n]");
+                    if (Console.ReadKey().Key == ConsoleKey.Y)
                     {
-                        NoConfigSetup(token, Prefix, Admins);
-                        Console.WriteLine($"\n\nAll set. As you gave a token as an argument, the config will not be saved.");
-                        await Task.Delay(3500);
+                        ConfigIndex = -1;
                         Console.Clear();
                     }
                     else
-                    {
-                        sql.Configs.Add(new SQLConfig
-                        {
-                            Id = ConfigIndex + 1,
-                            Token = token,
-                            PrefixDefault = Prefix,
-                            AdminIds = Admins
-                        });
-                        sql.SaveChanges();
-                        Console.WriteLine($"\n\nAll set, appended config #{ConfigIndex} to database.");
-                        await Task.Delay(3500);
-                        Console.Clear();
-                    }
+                        Environment.Exit(0);
                 }
-
-                await client.LoginAsync(TokenType.Bot, sql.GetConfig(ConfigIndex).Token);
-                LockTokens();
-                await client.StartAsync();
+                Registration(token, out token, out string Prefix, out string[] Admins);
+                if (ConfigIndex == -1)
+                {
+                    SQL.NoConfigSetup(token, Prefix, Admins);
+                    Console.WriteLine($"\n\nAll set. Remember, as there is no connection to the database, the config will not be saved.");
+                    await Task.Delay(3500);
+                    Console.Clear();
+                }
+                else
+                {
+                    SQL.Configs.Add(new SQLConfig
+                    {
+                        Id = ConfigIndex + 1,
+                        Token = token,
+                        PrefixDefault = Prefix,
+                        AdminIds = Admins
+                    });
+                    SQL.SaveChanges();
+                    Console.WriteLine($"\n\nAll set, appended config #{ConfigIndex} to database.");
+                    await Task.Delay(3500);
+                    Console.Clear();
+                }
             }
+
+            if (string.IsNullOrWhiteSpace(SQL.GetConfig(ConfigIndex).Token))
+                return;
+            await client.LoginAsync(TokenType.Bot, SQL.GetConfig(ConfigIndex).Token);
+            SQL.LockTokens();
+            await client.StartAsync();
 
             client.Ready += () =>
             {
-                using (SQLContext sql = new SQLContext())
+                if (ConfigIndex != -1)
                 {
-                    if (ConfigIndex != -1)
-                    {
-                        foreach (SocketGuild guild in client.Guilds)
-                            if (sql.GetGuild(guild) == null)
-                                sql.Guilds.Add(new SQLGuild
-                                {
-                                    GuildId = guild.Id.ToString(),
-                                    Prefix = sql.GetConfig(ConfigIndex).PrefixDefault,
-                                    DropFunBucks = false
-                                });
-                        sql.SaveChanges();
-                    }
+                    foreach (SocketGuild guild in client.Guilds)
+                        if (SQL.GetGuild(guild) == null)
+                            SQL.Guilds.Add(new SQLGuild
+                            {
+                                GuildId = guild.Id.ToString(),
+                                Prefix = SQL.GetConfig(ConfigIndex).PrefixDefault,
+                                DropFunBucks = false
+                            });
+                    SQL.SaveChanges();
                 }
                 UpdateWindowTitle(client);
                 return Task.CompletedTask;
@@ -106,11 +121,10 @@ namespace Bot57Ag
             await Task.Delay(-1);
         }
         
-        public void UpdateWindowTitle(DiscordSocketClient client)
+        public static void UpdateWindowTitle(DiscordSocketClient client)
         {
-            using (SQLContext sql = new SQLContext())
-                if (sql.GetConfig(ConfigIndex) != null)
-                    Console.Title = $"Bot57Ag (Silver v{ThisAssembly.Git.Tag}) - {client.CurrentUser.Username}#{client.CurrentUser.Discriminator} on {client.Guilds.Count} guild(s) (Config #{ConfigIndex}, Prefix {sql.GetConfig(ConfigIndex).PrefixDefault})";
+            if (SQL.GetConfig(ConfigIndex) != null)
+                Console.Title = $"Bot57Ag (Silver v{ThisAssembly.Git.Tag}) - {client.CurrentUser.Username}#{client.CurrentUser.Discriminator} on {client.Guilds.Count} guild(s) (Config #{ConfigIndex}, Prefix {SQL.GetConfig(ConfigIndex).PrefixDefault})";
         }
 
         private void Registration(string TokenIn, out string TokenOut, out string PrefixOut, out string[] AdminsOut)
@@ -133,41 +147,13 @@ namespace Bot57Ag
             AdminsOut = Console.ReadLine().Split(',');
 
             Console.Clear();
-            Console.WriteLine($" Token: {TokenOut.Substring(0, 6)}...{TokenOut.Substring(TokenOut.Length - 6)}\nPrefix: {PrefixOut}\nAdmins: {string.Join(',', AdminsOut)}\n\nDoes everything look correct? (y/n)");
+            Console.WriteLine($" Token: {TokenOut.Substring(0, 6)}...{TokenOut.Substring(TokenOut.Length - 6)}\nPrefix: {PrefixOut}\nAdmins: {string.Join(',', AdminsOut)}\n\nDoes everything look correct? [y/n]");
             if (Console.ReadKey().Key == ConsoleKey.Y)
                 return;
             else
                 Registration(TokenOut, out TokenOut, out PrefixOut, out AdminsOut);
         }
 
-        private static bool _LockTokens;
-
-        public static bool TokensLocked()
-        {
-            return _LockTokens;
-        }
-
-        public void LockTokens()
-        {
-            _LockTokens = true;
-        }
-
-        public static SQLConfig NoConfigSQLConfig;
-        private bool NoConfigSetup_Ran = false;
-
-        public void NoConfigSetup(string token, string prefix, string[] ids)
-        {
-            if (!NoConfigSetup_Ran)
-            {
-                NoConfigSQLConfig = new SQLConfig
-                {
-                    Id = -1,
-                    Token = token,
-                    PrefixDefault = prefix,
-                    AdminIds = ids
-                };
-                NoConfigSetup_Ran = true;
-            }
-        }
+        
     }
 }

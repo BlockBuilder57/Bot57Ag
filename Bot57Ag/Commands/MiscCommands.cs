@@ -13,7 +13,7 @@ using Bot57Ag.Preconditions;
 
 namespace Bot57Ag.Commands
 {
-    [Summary("Miscellaneous commands, no prefix. What more could you ask for?\n")]
+    [Summary("Miscellaneous commands, no group. What more could you ask for?\n")]
     public class MiscCommands : ModuleBase<SocketCommandContext>
     {
         private readonly CommandService cmdsrv;
@@ -63,11 +63,16 @@ namespace Bot57Ag.Commands
                         if (submod.GetExecutableCommandsAsync(Context, null).Result.Count > 0)
                         {
                             string Alias = submod.Aliases.Where(x => !x.Contains(submod.Name)).FirstOrDefault();
-                            moduleinfo += $"{CultureInfo.CurrentCulture.TextInfo.ToTitleCase(submod.Name)}{(String.IsNullOrWhiteSpace(Alias) ? "" : $" ({CultureInfo.CurrentCulture.TextInfo.ToTitleCase(Alias.Split(' ').LastOrDefault())})")}, ";
+                            moduleinfo += $"{CultureInfo.CurrentCulture.TextInfo.ToTitleCase(submod.Name)} Cmds{(String.IsNullOrWhiteSpace(Alias) ? "" : $" ({CultureInfo.CurrentCulture.TextInfo.ToTitleCase(Alias.Split(' ').LastOrDefault())})")}, ";
                         }
                     }
                     if (module.GetExecutableCommandsAsync(Context, null).Result.Count > 0)
-                        helpEmbed.AddField($"{(module.Group != null ? CultureInfo.CurrentCulture.TextInfo.ToTitleCase(module.Group) : module.Name.Replace("Commands",""))} Commands", $"{module.Summary}`{moduleinfo.Substring(0, moduleinfo.Length-2)}`");
+                    {
+                        string FieldTitle = $"{(module.Group != null ? CultureInfo.CurrentCulture.TextInfo.ToTitleCase(module.Group) : module.Name.Replace("Commands", ""))} Commands";
+                        if (Silver.SQL.GetGuild(Context.Guild) != null && !string.IsNullOrWhiteSpace(module.Group))
+                            FieldTitle += $" ( {Silver.SQL.GetGuild(Context.Guild).Prefix}{module.Group} )";
+                        helpEmbed.AddField(FieldTitle, $"{module.Summary}`{moduleinfo.Substring(0, moduleinfo.Length-2)}`");
+                    }
                 }
             }
             await ReplyAsync(null, false, helpEmbed.Build());
@@ -90,23 +95,18 @@ namespace Bot57Ag.Commands
         [RequireUserPermission(GuildPermission.Administrator, Group = "OwnerOrManager")]
         [RequireConfigAdmin(Group = "OwnerOrManager")]
         [RequireContext(ContextType.Guild)]
+        [RequireDatabaseConnection]
         [Summary("Sets the prefix for this guild. Admins only.")]
         public async Task MiscPrefix([Remainder] string prefix)
         {
-            using (SQLContext sql = new SQLContext())
+            if (Silver.SQL.GetGuild(Context.Guild) != null)
             {
-                if (sql.GetGuild(Context.Guild) != null)
-                {
-                    sql.GetGuild(Context.Guild).Prefix = prefix;
-                    sql.SaveChanges();
-                    await ReplyAsync($"Done! From now on, use `{prefix}` to run commands in this guild.");
-                }
-                else
-                {
-                    Silver.NoConfigSQLConfig.PrefixDefault = prefix;
-                    await ReplyAsync($"Done! From now on, use `{prefix}` to run commands.");
-                }
+                Silver.SQL.GetGuild(Context.Guild).Prefix = prefix;
+                Silver.SQL.SaveChanges();
+                await ReplyAsync($"Done! From now on, use `{prefix}` to run commands in this guild.");
             }
+            else
+                await ReplyAsync("Error! Guild not found in database. This should never happen, let the owner know.");
         }
     }
 }

@@ -11,16 +11,13 @@ namespace Bot57Ag.Preconditions
     {
         public async override Task<PreconditionResult> CheckPermissionsAsync(ICommandContext context, CommandInfo command, IServiceProvider services)
         {
-            using (SQLContext sql = new SQLContext())
+            if (Silver.SQL.GetUser(context.User) != null)
+                return await Task.FromResult(PreconditionResult.FromSuccess());
+            else
             {
-                if (sql.GetUser(context.User) != null)
-                    return await Task.FromResult(PreconditionResult.FromSuccess());
-                else
-                {
-                    if (command.Module.Aliases.Contains(context.Message.Content.Remove(0, sql.GetGuild(context.Guild).Prefix.Length).Split(' ')[0])) //bullshit non-fb-command protection
-                        await context.Channel.SendMessageAsync($"You must have an account. Please register one by running `{sql.GetGuild(context.Guild).Prefix}fb register`.");
-                    return await Task.FromResult(PreconditionResult.FromError("You must have an account."));
-                }
+                if (Silver.SQL.GetGuild(context.Guild) != null && command.Module.Aliases.Contains(context.Message.Content.Remove(0, Silver.SQL.GetGuild(context.Guild).Prefix.Length).Split(' ')[0])) //bullshit non-fb-command protection
+                    await context.Channel.SendMessageAsync($"You must have an account. Please register one by running `{Silver.SQL.GetGuild(context.Guild).Prefix}fb register`.");
+                return await Task.FromResult(PreconditionResult.FromError("You must have an account."));
             }
         }
     }

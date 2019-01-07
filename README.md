@@ -7,6 +7,12 @@ To actually be able to have the bot function, install a run of the mill PostgreS
 Make sure to give it a good password, as this stores your bot's token.
 ## Running
 On first boot, you will be required to enter the database password. On subsequent boots, the text stored in the `dbpass.txt` file in the exectuable folder will be used as the password.
-You will be stepped through the instructions of setup, then you will be able to run the bot. Refer to the `help` command for a list of commands.
-The executable also has a set of basic switches, `-configindex [number]` to allow for multiple configs on one install, and `-token [token]` forcing a token to be used without a config.
-These configs have their own guild settings (two bots *can* share a server, mind you,) but they share user information such as Fun Bucks.
+You will be stepped through the instructions of setup, then you will be able to run the bot. Refer to the `help` command for a list of commands.  
+The executable also has a set of basic switches.  
+```
+-configindex [number] - Allows for multiple configs on one install  
+                        (Note: The different config indexes have their own guild settings,  
+                        as two bots can share a server. However, they share user accounts,  
+                        used for things such as Fun Bucks.)
+-token [token]        - Forces a token to be used without the database (and without a config)
+```

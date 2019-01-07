@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 using System.Reflection;
 using Discord;
+using Npgsql;
 
 namespace Bot57Ag
 {
@@ -14,6 +15,8 @@ namespace Bot57Ag
         public DbSet<SQLConfig> Configs { get; set; }
         public DbSet<SQLGuild> Guilds { get; set; }
         public DbSet<SQLUser> Users { get; set; }
+
+        public NpgsqlConnection connection;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -31,7 +34,17 @@ namespace Bot57Ag
                 databasepass = Console.ReadLine();
                 File.WriteAllText(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location) + @"\dbpass.txt", databasepass);
             }
-            optionsBuilder.UseNpgsql($"Host=localhost;Database=Bot57Ag;Username=Bot57Ag;Password={databasepass}");
+            connection = new NpgsqlConnection($"Host=localhost;Database=Bot57Ag;Username=Bot57Ag;Password={databasepass}");
+            connection.StateChange += StateChange;
+            optionsBuilder.UseNpgsql(connection);
+        }
+
+        public bool HasConnected = false;
+
+        private void StateChange(object sender, System.Data.StateChangeEventArgs e)
+        {
+            if (!(e.CurrentState == System.Data.ConnectionState.Closed || e.CurrentState == System.Data.ConnectionState.Broken))
+                HasConnected = true;
         }
 
         public override int SaveChanges()
@@ -42,42 +55,88 @@ namespace Bot57Ag
                 return base.SaveChanges();
         }
 
+        private static bool _LockTokens;
+
+        public static bool TokensLocked()
+        {
+            return _LockTokens;
+        }
+
+        public void LockTokens()
+        {
+            _LockTokens = true;
+        }
+
+        public static SQLConfig NoConfigSQLConfig;
+        private bool NoConfigSetup_Ran = false;
+
+        public void NoConfigSetup(string token, string prefix, string[] ids)
+        {
+            if (!NoConfigSetup_Ran)
+            {
+                NoConfigSQLConfig = new SQLConfig
+                {
+                    Id = -1,
+                    Token = token,
+                    PrefixDefault = prefix,
+                    AdminIds = ids
+                };
+                NoConfigSetup_Ran = true;
+            }
+        }
+
         public SQLConfig GetConfig(int id)
         {
-            SQLConfig temp = Silver.ConfigIndex == -1 ? Silver.NoConfigSQLConfig : Configs.Find(id + 1);
-            if (Silver.TokensLocked())
-                temp.Token = null;
-            return temp;
+            SQLConfig temp;
+            if (Silver.ConfigIndex == -1)
+            {
+                temp = NoConfigSQLConfig;
+                if (TokensLocked())
+                    temp.Token = null;
+                return temp;
+            }
+            else
+            {
+                try
+                {
+                    temp = Configs.Find(id + 1);
+                    SQLConfig tochange = Silver.ConfigIndex == -1 || !HasConnected ? NoConfigSQLConfig : temp;
+                    if (TokensLocked())
+                        temp.Token = null;
+                    return temp;
+                }
+                catch (System.Net.Sockets.SocketException) { return null; }
+            }
         }
 
         public SQLUser GetUser(IUser usr)
         {
-            return Users.Find(usr.Id.ToString());
+            return Silver.ConfigIndex == -1 ? null : Users.Find(usr.Id.ToString());
         }
 
         public SQLUser GetUser(ulong id)
         {
-            return Users.Find(id.ToString());
+            return Silver.ConfigIndex == -1 ? null : Users.Find(id.ToString());
         }
 
         public SQLUser GetUser(string id)
         {
-            return Users.Find(id);
+            return Silver.ConfigIndex == -1 ? null : Users.Find(id);
         }
 
         public SQLGuild GetGuild(IGuild guild)
         {
-            return Guilds.Find(new object[] { guild.Id.ToString(), Silver.ConfigIndex });
+            return Silver.ConfigIndex == -1 ? null : Guilds.Find(new object[] { guild.Id.ToString(), Silver.ConfigIndex });
         }
 
         public SQLGuild GetGuild(ulong id)
         {
-            return Guilds.Find(new object[] { id.ToString(), Silver.ConfigIndex });
+            return Silver.ConfigIndex == -1 ? null : Guilds.Find(new object[] { id.ToString(), Silver.ConfigIndex });
         }
 
         public SQLGuild GetGuild(string id)
         {
-            return Guilds.Find(new object[] { id, Silver.ConfigIndex });
+            return Silver.ConfigIndex == -1 ? null : Guilds.Find(new object[] { id, Silver.ConfigIndex });
         }
     }
 
