@@ -6,11 +6,20 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="Resources\strings.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\strings.json" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Discord.Net" Version="2.0.1" />
     <PackageReference Include="GitInfo" Version="2.0.20">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
     </PackageReference>
+    <PackageReference Include="Newtonsoft.Json" Version="12.0.1" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="2.2.0" />
   </ItemGroup>
 

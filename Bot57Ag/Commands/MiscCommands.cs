@@ -13,7 +13,7 @@ using Bot57Ag.Preconditions;
 
 namespace Bot57Ag.Commands
 {
-    [Summary("Miscellaneous commands, no group. What more could you ask for?\n")]
+    [Summary("Miscellaneous commands, no group. What more could you ask for?")]
     public class MiscCommands : ModuleBase<SocketCommandContext>
     {
         private readonly CommandService cmdsrv;
@@ -32,19 +32,17 @@ namespace Bot57Ag.Commands
         [Command("about")]
         public async Task MiscAbout()
         {
-            EmbedBuilder aboutEmbed = new EmbedBuilder();
-            aboutEmbed.Color = new Discord.Color(0x0047AB);
+            EmbedBuilder aboutEmbed = Silver.Tools.GetStockEmbed();
             aboutEmbed.AddField("OS", System.Runtime.InteropServices.RuntimeInformation.OSDescription, false);
-            aboutEmbed.AddField("Silver Version", $"v{Silver.Version}{(String.IsNullOrWhiteSpace(ThisAssembly.Git.Tag) ? "" : $"-{ThisAssembly.Git.Tag}")}", true);
+            aboutEmbed.AddField("Silver Version", Silver.VersionString, true);
             aboutEmbed.AddField("Discord.NET Version", typeof(DiscordConfig).GetTypeInfo().Assembly.GetName().Version.ToString(3), true);
             await ReplyAsync(null, false, aboutEmbed.Build());
         }
 
-        [Command("help")]
+        [Command("help", RunMode = RunMode.Async)]
         public async Task MiscHelp()
         {
-            EmbedBuilder helpEmbed = new EmbedBuilder();
-            helpEmbed.Color = new Discord.Color(0x0047AB);
+            EmbedBuilder helpEmbed = Silver.Tools.GetStockEmbed();
             foreach (ModuleInfo module in cmdsrv.Modules.OrderBy(x => !x.Name.Contains("Misc")))
             {
                 if (!module.IsSubmodule)

@@ -36,8 +36,8 @@ namespace Bot57Ag
             int argPos = 0;
 
             string prefix = "☺"; //please never use this
-            if (Silver.SQL.GetConfig(Silver.ConfigIndex) != null)
-                prefix = Silver.SQL.GetConfig(Silver.ConfigIndex).PrefixDefault;
+            if (Silver.SQL.GetCurConfig() != null)
+                prefix = Silver.SQL.GetCurConfig().PrefixDefault;
             if (message.Channel is SocketGuildChannel sgc)
                 if (Silver.SQL.GetGuild(sgc.Guild) != null && Silver.SQL.GetGuild(sgc.Guild).Prefix != null)
                     prefix = Silver.SQL.GetGuild(sgc.Guild).Prefix;

@@ -11,7 +11,7 @@ using Bot57Ag.Preconditions;
 namespace Bot57Ag.Commands
 {
     [RequireConfigAdmin]
-    [Summary("Commands only the bot admins can run.\n")]
+    [Summary("Commands only the bot admins can run.")]
     public class AdminCommands : ModuleBase<SocketCommandContext>
     {
         [Command("logoff", RunMode = RunMode.Async)]

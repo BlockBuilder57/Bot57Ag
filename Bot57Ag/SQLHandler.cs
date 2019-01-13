@@ -7,6 +7,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Reflection;
 using Discord;
 using Npgsql;
+using Discord.WebSocket;
 
 namespace Bot57Ag
 {
@@ -26,13 +27,13 @@ namespace Bot57Ag
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
             string databasepass = "";
-            if (File.Exists(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location) + @"\dbpass.txt"))
-                databasepass = File.ReadAllText(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location) + @"\dbpass.txt");
+            if (File.Exists(Silver.PathString + "dbpass.txt"))
+                databasepass = File.ReadAllText(Silver.PathString + "dbpass.txt");
             else
             {
                 Console.WriteLine("Enter the database password please. It will be saved to dbpass.txt once you have entered it.");
                 databasepass = Console.ReadLine();
-                File.WriteAllText(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location) + @"\dbpass.txt", databasepass);
+                File.WriteAllText(Silver.PathString + "dbpass.txt", databasepass);
             }
             connection = new NpgsqlConnection($"Host=localhost;Database=Bot57Ag;Username=Bot57Ag;Password={databasepass}");
             connection.StateChange += StateChange;
@@ -55,18 +56,6 @@ namespace Bot57Ag
                 return base.SaveChanges();
         }
 
-        private static bool _LockTokens;
-
-        public static bool TokensLocked()
-        {
-            return _LockTokens;
-        }
-
-        public void LockTokens()
-        {
-            _LockTokens = true;
-        }
-
         public static SQLConfig NoConfigSQLConfig;
         private bool NoConfigSetup_Ran = false;
 
@@ -85,28 +74,14 @@ namespace Bot57Ag
             }
         }
 
-        public SQLConfig GetConfig(int id)
+        /*public SQLConfig GetConfig(int id)
         {
-            SQLConfig temp;
-            if (Silver.ConfigIndex == -1)
-            {
-                temp = NoConfigSQLConfig;
-                if (TokensLocked())
-                    temp.Token = null;
-                return temp;
-            }
-            else
-            {
-                try
-                {
-                    temp = Configs.Find(id + 1);
-                    SQLConfig tochange = Silver.ConfigIndex == -1 || !HasConnected ? NoConfigSQLConfig : temp;
-                    if (TokensLocked())
-                        temp.Token = null;
-                    return temp;
-                }
-                catch (System.Net.Sockets.SocketException) { return null; }
-            }
+            return Silver.ConfigIndex == -1 ? NoConfigSQLConfig : Configs.Find(id + 1);
+        }*/
+
+        public SQLConfig GetCurConfig()
+        {
+            return Silver.ConfigIndex == -1 ? NoConfigSQLConfig : Configs.Find(Silver.ConfigIndex + 1);
         }
 
         public SQLUser GetUser(IUser usr)
@@ -114,29 +89,21 @@ namespace Bot57Ag
             return Silver.ConfigIndex == -1 ? null : Users.Find(usr.Id.ToString());
         }
 
-        public SQLUser GetUser(ulong id)
+        public string GetUserPrefName(IUser usr, bool WithUsername = false)
         {
-            return Silver.ConfigIndex == -1 ? null : Users.Find(id.ToString());
-        }
-
-        public SQLUser GetUser(string id)
-        {
-            return Silver.ConfigIndex == -1 ? null : Users.Find(id);
+            string PrefName = usr.Username;
+            if (usr is SocketGuildUser sgu && sgu.Nickname != null)
+                PrefName = sgu.Nickname;
+            if (Users.Find(usr.Id.ToString()) != null && Users.Find(usr.Id.ToString()).Nickname != null)
+                PrefName = Users.Find(usr.Id.ToString()).Nickname;
+            if (WithUsername && PrefName != usr.Username)
+                PrefName += $" ({usr.Username})";
+            return PrefName.Replace("@", "@\u200B");
         }
 
         public SQLGuild GetGuild(IGuild guild)
         {
             return Silver.ConfigIndex == -1 ? null : Guilds.Find(new object[] { guild.Id.ToString(), Silver.ConfigIndex });
-        }
-
-        public SQLGuild GetGuild(ulong id)
-        {
-            return Silver.ConfigIndex == -1 ? null : Guilds.Find(new object[] { id.ToString(), Silver.ConfigIndex });
-        }
-
-        public SQLGuild GetGuild(string id)
-        {
-            return Silver.ConfigIndex == -1 ? null : Guilds.Find(new object[] { id, Silver.ConfigIndex });
         }
     }
 
@@ -165,6 +132,7 @@ namespace Bot57Ag
     {
         [Key]
         public string UserId { get; set; }
+        public string Nickname { get; set; }
         public decimal FunBucks { get; set; }
         public DateTimeOffset FunBucksLastPaycheck { get; set; }
     }

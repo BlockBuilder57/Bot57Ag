@@ -5,6 +5,11 @@ using System.Threading.Tasks;
 using Discord;
 using Discord.WebSocket;
 using Discord.Commands;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using System.IO;
+using System.Reflection;
+using System.Timers;
 
 namespace Bot57Ag
 {
@@ -12,7 +17,12 @@ namespace Bot57Ag
     {
         private static DiscordSocketClient client;
         public static SQLContext SQL = new SQLContext();
-        public static Version Version = new Version(0, 1);
+        public static Random Rand = new Random();
+        public static string PathString = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location) + @"\";
+
+        private readonly static Version Version = new Version(0, 2);
+        public static string VersionString = $"v{Version}-{ThisAssembly.Git.Commit}{(ThisAssembly.Git.IsDirty ? "-dirty" : "")}";
+
         public static int ConfigIndex = 0;
 
         static void Main(string[] args)
@@ -21,7 +31,7 @@ namespace Bot57Ag
             string ArgsToken = null;
             bool FromToken = false;
 
-            for (int i = 0; i < args.Length-1; i++)
+            for (int i = 0; i < args.Length - 1; i++)
             {
                 if (args[i].ToLower().Contains("configindex"))
                 {
@@ -55,7 +65,9 @@ namespace Bot57Ag
 
             client.Log += new LogHandler().CustomLogger;
 
-            if (SQL.GetConfig(ConfigIndex) == null || fromtoken == true)
+            Tools.RefreshJSON();
+
+            if (SQL.GetCurConfig() == null || fromtoken == true)
             {
                 if (!SQL.HasConnected)
                 {
@@ -92,39 +104,66 @@ namespace Bot57Ag
                 }
             }
 
-            if (string.IsNullOrWhiteSpace(SQL.GetConfig(ConfigIndex).Token))
+            if (string.IsNullOrWhiteSpace(SQL.GetCurConfig().Token))
                 return;
-            await client.LoginAsync(TokenType.Bot, SQL.GetConfig(ConfigIndex).Token);
-            SQL.LockTokens();
+            await client.LoginAsync(TokenType.Bot, SQL.GetCurConfig().Token);
             await client.StartAsync();
 
-            client.Ready += () =>
-            {
-                if (ConfigIndex != -1)
-                {
-                    foreach (SocketGuild guild in client.Guilds)
-                        if (SQL.GetGuild(guild) == null)
-                            SQL.Guilds.Add(new SQLGuild
-                            {
-                                GuildId = guild.Id.ToString(),
-                                Prefix = SQL.GetConfig(ConfigIndex).PrefixDefault,
-                                DropFunBucks = false
-                            });
-                    SQL.SaveChanges();
-                }
-                UpdateWindowTitle(client);
-                return Task.CompletedTask;
-            };
+            client.Ready += ClientReady;
 
             await new CommandHandler(client, new CommandService()).InstallCommandsAsync();
 
             await Task.Delay(-1);
         }
-        
-        public static void UpdateWindowTitle(DiscordSocketClient client)
+
+        private async Task ClientReady()
         {
-            if (SQL.GetConfig(ConfigIndex) != null)
-                Console.Title = $"Bot57Ag (Silver v{ThisAssembly.Git.Tag}) - {client.CurrentUser.Username}#{client.CurrentUser.Discriminator} on {client.Guilds.Count} guild(s) (Config #{ConfigIndex}, Prefix {SQL.GetConfig(ConfigIndex).PrefixDefault})";
+            if (ConfigIndex != -1)
+            {
+                foreach (SocketGuild guild in client.Guilds)
+                    if (SQL.GetGuild(guild) == null)
+                        SQL.Guilds.Add(new SQLGuild
+                        {
+                            GuildId = guild.Id.ToString(),
+                            Prefix = SQL.GetCurConfig().PrefixDefault,
+                            DropFunBucks = false
+                        });
+                SQL.SaveChanges();
+            }
+
+            UpdateWindowTitle();
+            await SetStatusAsync();
+            Timer updater = Tools.CreateTimer(TimeSpan.FromMinutes(1), async (s, e) =>
+            {
+                UpdateWindowTitle();
+                await SetStatusAsync();
+            });
+        }
+
+        public static void UpdateWindowTitle()
+        {
+            if (SQL.GetCurConfig() != null)
+                Console.Title = $"Bot57Ag (Silver {VersionString}) - {client.CurrentUser.Username}#{client.CurrentUser.Discriminator} on {client.Guilds.Count} guild(s) (Config #{ConfigIndex}, Default Prefix {SQL.GetCurConfig().PrefixDefault})";
+        }
+
+        private async Task SetStatusAsync()
+        {
+            string[] status = new string[] { "something broke" };
+            if (Tools.GetJSONValue("statusStrings") != null)
+                status = Tools.GetJSONValue("statusStrings").Split('|');
+            switch (status[0].ToLowerInvariant()[0])
+            {
+                case 'p':
+                default:
+                    await client.SetGameAsync(status.Length > 1 ? status[1] : status[0], type: ActivityType.Playing);
+                    break;
+                case 'w':
+                    await client.SetGameAsync(status.Length > 1 ? status[1] : status[0], type: ActivityType.Watching);
+                    break;
+                case 'l':
+                    await client.SetGameAsync(status.Length > 1 ? status[1] : status[0], type: ActivityType.Listening);
+                    break;
+            }
         }
 
         private void Registration(string TokenIn, out string TokenOut, out string PrefixOut, out string[] AdminsOut)
@@ -154,6 +193,59 @@ namespace Bot57Ag
                 Registration(TokenOut, out TokenOut, out PrefixOut, out AdminsOut);
         }
 
-        
+        public class Tools
+        {
+            public static dynamic JSON { get; private set; }
+
+            public static void RefreshJSON()
+            {
+                using (Stream stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("Bot57Ag.Resources.strings.json"))
+                using (StreamReader read = new StreamReader(stream))
+                    JSON = JsonConvert.DeserializeObject(File.Exists(PathString + "strings.json") ? "{}" : read.ReadToEnd());
+            }
+
+            public static string GetJSONValue(string key)
+            {
+                if (JSON[key] != null)
+                {
+                    if (JSON[key] is JArray)
+                    {
+                        string[] strings = JSON[key].ToObject<string[]>();
+                        return strings[Rand.Next(0, strings.Length-1)];
+                    }
+                    else if (JSON[key] is JObject)
+                        return JSON[key].ToString();
+                }
+                return null;
+            }
+
+            //i basically stole this from wam sorry man
+            public static Timer CreateTimer(TimeSpan length, ElapsedEventHandler handler)
+            {
+                Timer timer = new Timer(length.TotalMilliseconds);
+                timer.Elapsed += handler;
+                timer.Start();
+
+                return timer;
+            }
+
+            public static EmbedBuilder GetStockEmbed(string title = null)
+            {
+                return new EmbedBuilder
+                {
+                    Color = new Discord.Color(0x0047AB),
+                    Author = new EmbedAuthorBuilder
+                    {
+                        IconUrl = client.CurrentUser.GetAvatarUrl(),
+                        Name = string.IsNullOrWhiteSpace(title) ? $"{title} - Bot57Ag" : "Bot57Ag"
+                    },
+                    Footer = new EmbedFooterBuilder
+                    {
+                        IconUrl = client.GetUser(120398901927739393).GetAvatarUrl(),
+                        Text = "big testering Test Teest Be Big GN cn A"
+                    }
+                };
+            }
+        }
     }
 }
