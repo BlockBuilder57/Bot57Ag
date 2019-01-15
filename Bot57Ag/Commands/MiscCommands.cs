@@ -24,13 +24,15 @@ namespace Bot57Ag.Commands
         }
 
         [Command("ping")]
+        [Summary("Tennis for Two (also known as Computer Tennis) is a sports vi...")]
         public async Task MiscPing()
         {
             await ReplyAsync($"hi, hello, i am here\ntook `~{Context.Client.Latency}ms`");
         }
 
-        [Command("about")]
-        public async Task MiscAbout()
+        [Command("status")]
+        [Summary("Checks versions and other various settings.")]
+        public async Task MiscStatus()
         {
             EmbedBuilder aboutEmbed = Silver.Tools.GetStockEmbed();
             aboutEmbed.AddField("OS", System.Runtime.InteropServices.RuntimeInformation.OSDescription, false);
@@ -39,37 +41,82 @@ namespace Bot57Ag.Commands
             await ReplyAsync(null, false, aboutEmbed.Build());
         }
 
-        [Command("help", RunMode = RunMode.Async)]
-        public async Task MiscHelp()
+        [Command("about")]
+        [Summary("Who hurt you little ~~MacBook~~ bot?")]
+        public async Task MiscAbout()
         {
-            EmbedBuilder helpEmbed = Silver.Tools.GetStockEmbed();
-            foreach (ModuleInfo module in cmdsrv.Modules.OrderBy(x => !x.Name.Contains("Misc")))
+            await ReplyAsync("i'm tired so let's make this quick\nblock - my dad\nwam - the irish man dad stole his ideas from\nthat's enough for now");
+        }
+
+        [Command("help", RunMode = RunMode.Async)]
+        [Summary("M E T A")]
+        public async Task MiscHelp([Remainder] string search = null)
+        {
+            EmbedBuilder helpEmbed = Silver.Tools.GetStockEmbed(string.IsNullOrWhiteSpace(search) ? "Help" : $"Results for {search}");
+            if (string.IsNullOrWhiteSpace(search))
             {
-                if (!module.IsSubmodule)
+                foreach (ModuleInfo module in cmdsrv.Modules.OrderBy(x => !x.Name.Contains("Misc")))
                 {
-                    string moduleinfo = "";
-                    foreach (CommandInfo cmd in module.Commands)
+                    if (!module.IsSubmodule)
                     {
-                        if (cmd.CheckPreconditionsAsync(Context, null).Result.IsSuccess)
+                        string moduleinfo = "";
+                        foreach (CommandInfo cmd in module.Commands)
                         {
-                            string Alias = cmd.Aliases.Where(x => !x.Contains(cmd.Name)).FirstOrDefault();
-                            moduleinfo += $"{cmd.Name}{(String.IsNullOrWhiteSpace(Alias) ? "" : $" ({Alias.Split(' ').LastOrDefault()})")}, ";
+                            if (cmd.CheckPreconditionsAsync(Context, null).Result.IsSuccess)
+                            {
+                                string[] Aliases = cmd.Aliases.Take(cmd.Aliases.Count / cmd.Module.Aliases.Count).Skip(1).ToArray();
+                                for (int i = 0; i < Aliases.Length; i++)
+                                    Aliases[i] = Aliases[i].Split(' ').Last();
+                                string Alias = string.Join(", ", Aliases);
+                                moduleinfo += $"{cmd.Name}{(string.IsNullOrWhiteSpace(Alias) ? "" : $" ( {Alias} )")}, ";
+                            }
+                        }
+                        foreach (ModuleInfo submod in module.Submodules)
+                        {
+                            if (submod.GetExecutableCommandsAsync(Context, null).Result.Count > 0)
+                            {
+                                string[] Aliases = submod.Aliases.Take(submod.Aliases.Count / submod.Parent.Aliases.Count).Skip(1).ToArray();
+                                for (int i = 0; i < Aliases.Length; i++)
+                                    Aliases[i] = CultureInfo.CurrentCulture.TextInfo.ToTitleCase(Aliases[i].Split(' ').Last());
+                                string Alias = string.Join(", ", Aliases);
+                                moduleinfo += $"{CultureInfo.CurrentCulture.TextInfo.ToTitleCase(submod.Name)} Cmds{(String.IsNullOrWhiteSpace(Alias) ? "" : $" ( {Alias} )")}, ";
+                            }
+                        }
+                        if (module.GetExecutableCommandsAsync(Context, null).Result.Count > 0)
+                        {
+                            string FieldTitle = $"{(module.Group != null ? CultureInfo.CurrentCulture.TextInfo.ToTitleCase(module.Group) : module.Name.Replace("Commands", ""))} Commands";
+                            if (Silver.SQL.GetGuild(Context.Guild) != null && !string.IsNullOrWhiteSpace(module.Group))
+                            {
+                                FieldTitle += " ( ";
+                                if (Silver.SQL.GetGuild(Context.Guild) != null)
+                                    FieldTitle += Silver.SQL.GetGuild(Context.Guild).Prefix + string.Join($", {Silver.SQL.GetGuild(Context.Guild).Prefix}", module.Aliases);
+                                FieldTitle += " )";
+                            }
+                                
+                            helpEmbed.AddField(FieldTitle, $"{module.Summary}\n`{moduleinfo.Substring(0, moduleinfo.Length - 2)}`");
                         }
                     }
-                    foreach (ModuleInfo submod in module.Submodules)
+                }
+            }
+            else
+            {
+                //eventually add modules to the search too, they'll take priorty over the commands
+                foreach (CommandInfo cmd in cmdsrv.Commands.Where(x => x.Aliases.Any(y => y.Contains(search.ToLowerInvariant()))).Take(5))
+                {
+                    if (cmd.CheckPreconditionsAsync(Context, null).Result.IsSuccess)
                     {
-                        if (submod.GetExecutableCommandsAsync(Context, null).Result.Count > 0)
+                        string SearchTitle = "";
+                        if (Silver.SQL.GetGuild(Context.Guild) != null)
                         {
-                            string Alias = submod.Aliases.Where(x => !x.Contains(submod.Name)).FirstOrDefault();
-                            moduleinfo += $"{CultureInfo.CurrentCulture.TextInfo.ToTitleCase(submod.Name)} Cmds{(String.IsNullOrWhiteSpace(Alias) ? "" : $" ({CultureInfo.CurrentCulture.TextInfo.ToTitleCase(Alias.Split(' ').LastOrDefault())})")}, ";
+                            string Aliases = string.Join($", {Silver.SQL.GetGuild(Context.Guild).Prefix}", cmd.Aliases.Take(cmd.Aliases.Count / cmd.Module.Aliases.Count).Skip(1));
+                            SearchTitle += $"{Silver.SQL.GetGuild(Context.Guild).Prefix}{cmd.Aliases[0]}{(string.IsNullOrWhiteSpace(Aliases) ? "" : $" ( {Silver.SQL.GetGuild(Context.Guild).Prefix}{Aliases} )")}";
                         }
-                    }
-                    if (module.GetExecutableCommandsAsync(Context, null).Result.Count > 0)
-                    {
-                        string FieldTitle = $"{(module.Group != null ? CultureInfo.CurrentCulture.TextInfo.ToTitleCase(module.Group) : module.Name.Replace("Commands", ""))} Commands";
-                        if (Silver.SQL.GetGuild(Context.Guild) != null && !string.IsNullOrWhiteSpace(module.Group))
-                            FieldTitle += $" ( {Silver.SQL.GetGuild(Context.Guild).Prefix}{module.Group} )";
-                        helpEmbed.AddField(FieldTitle, $"{module.Summary}`{moduleinfo.Substring(0, moduleinfo.Length-2)}`");
+                        string CommandParameters = $"```csharp\n";
+                        List<string> fields = new List<string>();
+                        foreach (var field in cmd.Parameters)
+                            fields.Add($"{(field.IsRemainder ? "[Remainder] " : "")}{field.Type.ToString().Split('.').LastOrDefault()} {field.Name}{(field.IsOptional ? $" = {(field.DefaultValue == null ? "null" : "")}" : "")}{(field.Summary != null ? $"\n({field.Summary})" : "")}");
+                        CommandParameters += $"{string.Join(", ", fields)}```";
+                        helpEmbed.AddField(SearchTitle, $"{cmd.Summary}\n{CommandParameters}");
                     }
                 }
             }
@@ -90,11 +137,11 @@ namespace Bot57Ag.Commands
         }
 
         [Command("prefix", RunMode = RunMode.Async)]
-        [RequireUserPermission(GuildPermission.Administrator, Group = "OwnerOrManager")]
+        [RequireUserPermission(GuildPermission.ManageGuild, Group = "OwnerOrManager")]
         [RequireConfigAdmin(Group = "OwnerOrManager")]
         [RequireContext(ContextType.Guild)]
         [RequireDatabaseConnection]
-        [Summary("Sets the prefix for this guild. Admins only.")]
+        [Summary("Sets the prefix for this guild. Bot admins and guild managers only.")]
         public async Task MiscPrefix([Remainder] string prefix)
         {
             if (Silver.SQL.GetGuild(Context.Guild) != null)

@@ -133,7 +133,7 @@ namespace Bot57Ag
 
             UpdateWindowTitle();
             await SetStatusAsync();
-            Timer updater = Tools.CreateTimer(TimeSpan.FromMinutes(1), async (s, e) =>
+            Timer updater = Tools.CreateTimer(TimeSpan.FromMinutes(5), async (s, e) =>
             {
                 UpdateWindowTitle();
                 await SetStatusAsync();
@@ -231,18 +231,37 @@ namespace Bot57Ag
 
             public static EmbedBuilder GetStockEmbed(string title = null)
             {
+                string footertext = "something errored";
+                if (GetJSONValue("statusStrings") != null)
+                {
+                    footertext = GetJSONValue("statusStrings");
+                    switch (footertext.ToLowerInvariant()[0])
+                    {
+                        case 'p':
+                        default:
+                            footertext = $"Playing {footertext.Remove(0, 2)}";
+                            break;
+                        case 'w':
+                            footertext = $"Watching {footertext.Remove(0, 2)}";
+                            break;
+                        case 'l':
+                            footertext = $"Listening to {footertext.Remove(0, 2)}";
+                            break;
+                    }
+                }
+                
                 return new EmbedBuilder
                 {
                     Color = new Discord.Color(0x0047AB),
                     Author = new EmbedAuthorBuilder
                     {
                         IconUrl = client.CurrentUser.GetAvatarUrl(),
-                        Name = string.IsNullOrWhiteSpace(title) ? $"{title} - Bot57Ag" : "Bot57Ag"
+                        Name = !string.IsNullOrWhiteSpace(title) ? $"{title} - Bot57Ag" : "Bot57Ag"
                     },
                     Footer = new EmbedFooterBuilder
                     {
                         IconUrl = client.GetUser(120398901927739393).GetAvatarUrl(),
-                        Text = "big testering Test Teest Be Big GN cn A"
+                        Text = footertext
                     }
                 };
             }
