@@ -86,7 +86,8 @@ namespace Bot57Ag.Commands
             if (Silver.SQL.GetUser(usr) != null)
                 await ReplyAsync($"{(usr == Context.User ? "Your" : $"{usr.Nickname}'s")} balance is 🜛{Silver.SQL.GetUser(usr).FunBucks.ToString("F2")}."); //🜛 is the alchemical symbol for silver
             else
-                await ReplyAsync();
+                if (Silver.Tools.GetJSONValue("NoFunBucksAccount") != null)
+                    await ReplyAsync(Silver.Tools.GetJSONValue("NoFunBucksAccount"));
         }
 
         [Command("paycheck")]
@@ -118,19 +119,20 @@ namespace Bot57Ag.Commands
                 SQLUser totransfer = Silver.SQL.GetUser(usr);
                 SQLUser fromtransfer = Silver.SQL.GetUser(Context.User);
 
-                if (!(fromtransfer.FunBucks < amount))
+                if (fromtransfer.FunBucks >= amount && amount > 0)
                 {
                     fromtransfer.FunBucks -= amount;
                     totransfer.FunBucks += amount;
-                    await ReplyAsync($"{usr.Mention} has recieved 🜛{amount.ToString("F2")}.");
+                    Silver.SQL.SaveChanges();
+                    await ReplyAsync($"{Silver.SQL.GetUserPrefName(usr)} has recieved 🜛{amount.ToString("F2")}.");
                 }
-
-                Silver.SQL.SaveChanges();
+                else
+                    await ReplyAsync("You tried to pull a sneaky on me. It didn't work.");
             }
             else
             {
-                if (Silver.Tools.JSON["NoFunBucksAccount"] != null)
-                    await ReplyAsync(Silver.Tools.JSON["NoFunBucksAccount"].ToString());
+                if (Silver.Tools.GetJSONValue("NoFunBucksAccount") != null)
+                    await ReplyAsync(Silver.Tools.GetJSONValue("NoFunBucksAccount"));
             }
         }
 
@@ -232,9 +234,14 @@ namespace Bot57Ag.Commands
             public async Task FunBucksAdminDeleteAccount(IUser usr)
             {
                 if (Silver.SQL.GetUser(usr) != null)
+                {
                     Silver.SQL.Users.Remove(Silver.SQL.GetUser(usr));
-                Silver.SQL.SaveChanges();
-                await ReplyAsync($"Removed ${usr.Username}'s account.");
+                    Silver.SQL.SaveChanges();
+                    await ReplyAsync($"Removed ${usr.Username}'s account.");
+                }
+                else
+                    if (Silver.Tools.GetJSONValue("NoFunBucksAccount") != null)
+                        await ReplyAsync(Silver.Tools.GetJSONValue("NoFunBucksAccount"));
             }
 
             [Command("setbal")]
@@ -242,9 +249,14 @@ namespace Bot57Ag.Commands
             public async Task FunBucksAdminSetBal(IUser usr, decimal money)
             {
                 if (Silver.SQL.GetUser(usr) != null)
+                {
                     Silver.SQL.GetUser(usr).FunBucks = money;
-                Silver.SQL.SaveChanges();
-                await ReplyAsync($"Set {Silver.SQL.GetUserPrefName(Context.Guild.GetUser(usr.Id))}'s Fun Bucks to 🜛{money.ToString("F2")}");
+                    Silver.SQL.SaveChanges();
+                    await ReplyAsync($"Set {Silver.SQL.GetUserPrefName(Context.Guild.GetUser(usr.Id))}'s Fun Bucks to 🜛{money.ToString("F2")}");
+                }
+                else
+                    if (Silver.Tools.GetJSONValue("NoFunBucksAccount") != null)
+                        await ReplyAsync(Silver.Tools.GetJSONValue("NoFunBucksAccount"));
             }
 
             [Command("setnick")]
@@ -257,6 +269,9 @@ namespace Bot57Ag.Commands
                     Silver.SQL.SaveChanges();
                     await ReplyAsync($"Set {Silver.SQL.GetUserPrefName(Context.Guild.GetUser(usr.Id))}'s nickname.");
                 }
+                else
+                    if (Silver.Tools.GetJSONValue("NoFunBucksAccount") != null)
+                        await ReplyAsync(Silver.Tools.GetJSONValue("NoFunBucksAccount"));
             }
         }
     }

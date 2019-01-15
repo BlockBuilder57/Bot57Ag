@@ -68,7 +68,7 @@ namespace Bot57Ag.Commands
                                 for (int i = 0; i < Aliases.Length; i++)
                                     Aliases[i] = Aliases[i].Split(' ').Last();
                                 string Alias = string.Join(", ", Aliases);
-                                moduleinfo += $"{cmd.Name}{(string.IsNullOrWhiteSpace(Alias) ? "" : $" ( {Alias} )")}, ";
+                                moduleinfo += $"{cmd.Name}{(string.IsNullOrWhiteSpace(Alias) ? "" : $" ({Alias})")}, ";
                             }
                         }
                         foreach (ModuleInfo submod in module.Submodules)
@@ -79,7 +79,7 @@ namespace Bot57Ag.Commands
                                 for (int i = 0; i < Aliases.Length; i++)
                                     Aliases[i] = CultureInfo.CurrentCulture.TextInfo.ToTitleCase(Aliases[i].Split(' ').Last());
                                 string Alias = string.Join(", ", Aliases);
-                                moduleinfo += $"{CultureInfo.CurrentCulture.TextInfo.ToTitleCase(submod.Name)} Cmds{(String.IsNullOrWhiteSpace(Alias) ? "" : $" ( {Alias} )")}, ";
+                                moduleinfo += $"{CultureInfo.CurrentCulture.TextInfo.ToTitleCase(submod.Name)} Cmds{(String.IsNullOrWhiteSpace(Alias) ? "" : $" ({Alias})")}, ";
                             }
                         }
                         if (module.GetExecutableCommandsAsync(Context, null).Result.Count > 0)
@@ -116,7 +116,7 @@ namespace Bot57Ag.Commands
                         foreach (var field in cmd.Parameters)
                             fields.Add($"{(field.IsRemainder ? "[Remainder] " : "")}{field.Type.ToString().Split('.').LastOrDefault()} {field.Name}{(field.IsOptional ? $" = {(field.DefaultValue == null ? "null" : "")}" : "")}{(field.Summary != null ? $"\n({field.Summary})" : "")}");
                         CommandParameters += $"{string.Join(", ", fields)}```";
-                        helpEmbed.AddField(SearchTitle, $"{cmd.Summary}\n{CommandParameters}");
+                        helpEmbed.AddField(SearchTitle, $"{cmd.Summary}{(cmd.Parameters.Count > 0 ? "\n" + CommandParameters : "")}");
                     }
                 }
             }
