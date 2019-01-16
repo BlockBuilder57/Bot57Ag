@@ -190,7 +190,7 @@ namespace Bot57Ag.Commands
 
         [Group("admin")]
         [RequireConfigAdmin]
-        [Summary("AUTHORIZED PERSONELL ONLY")]
+        [Summary("AUTHORIZED PERSONNEL ONLY")]
         public class FunBucksAdminCommands : ModuleBase<SocketCommandContext>
         {
             [Command("clearempties")]

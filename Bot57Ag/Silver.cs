@@ -20,14 +20,13 @@ namespace Bot57Ag
         public static Random Rand = new Random();
         public static string PathString = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location) + @"\";
 
-        private readonly static Version Version = new Version(0, 2);
-        public static string VersionString = $"v{Version}-{ThisAssembly.Git.Commit}{(ThisAssembly.Git.IsDirty ? "-dirty" : "")}";
+        public static string VersionString = $"v{Assembly.GetEntryAssembly().GetName().Version.ToString(2)}-{ThisAssembly.Git.Commit}{(ThisAssembly.Git.IsDirty ? "-dirty" : "")}";
 
         public static int ConfigIndex = 0;
 
         static void Main(string[] args)
         {
-            Console.Title = $"Bot57Ag (Silver v{Version})";
+            Console.Title = $"Bot57Ag (Silver {VersionString})";
             string ArgsToken = null;
             bool FromToken = false;
 
@@ -229,6 +228,16 @@ namespace Bot57Ag
                 return timer;
             }
 
+            //https://stackoverflow.com/a/22733709
+            public enum SizeUnits
+            {
+                Byte, KB, MB, GB, TB, PB, EB, ZB, YB
+            }
+            public static string ToSize(long value, SizeUnits unit, bool binary = true)
+            {
+                return (value / (double)Math.Pow((binary ? 1024 : 1000), (Int64)unit)).ToString("0.00") + unit.ToString().Insert(1, (binary ? "i" : ""));
+            }
+
             public static EmbedBuilder GetStockEmbed(string title = null)
             {
                 string footertext = "something errored";
@@ -255,8 +264,9 @@ namespace Bot57Ag
                     Color = new Discord.Color(0x0047AB),
                     Author = new EmbedAuthorBuilder
                     {
+                        Name = !string.IsNullOrWhiteSpace(title) ? $"{title} - Bot57Ag" : "Bot57Ag",
                         IconUrl = client.CurrentUser.GetAvatarUrl(),
-                        Name = !string.IsNullOrWhiteSpace(title) ? $"{title} - Bot57Ag" : "Bot57Ag"
+                        Url = "https://github.com/BlockBuilder57/Bot57Ag"
                     },
                     Footer = new EmbedFooterBuilder
                     {
